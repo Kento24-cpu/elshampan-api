@@ -1,0 +1,16 @@
+{
+  "name": "elshampan-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend API for El Shampan liquor store",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.0",
+    "express": "^5.2.1"
+  }
+}
