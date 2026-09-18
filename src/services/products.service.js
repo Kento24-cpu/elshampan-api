@@ -1,4 +1,5 @@
 import { pool } from "../db/pool.js";
+import { notFound } from "../utils/errors.js";
 import { serializeProduct } from "../utils/serializers.js";
 
 const PRODUCT_COLUMNS = `
@@ -36,4 +37,21 @@ export async function listProducts({ category = null, q = null, limit, offset })
   );
 
   return rows.map(serializeProduct);
+}
+
+export async function getProductById(id) {
+  const [rows] = await pool.query(
+    `SELECT ${PRODUCT_COLUMNS}
+       FROM products p
+       JOIN categories c ON c.id = p.category_id
+      WHERE p.id = ? AND p.is_active = 1
+      LIMIT 1`,
+    [id]
+  );
+
+  if (rows.length === 0) {
+    throw notFound("Producto no encontrado");
+  }
+
+  return serializeProduct(rows[0]);
 }
