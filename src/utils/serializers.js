@@ -6,6 +6,15 @@ export function serializeCategory(row) {
   };
 }
 
+export function serializeUser(row) {
+  return {
+    id: String(row.id),
+    name: row.name,
+    email: row.email,
+    phone: row.phone ?? null
+  };
+}
+
 export function serializeProduct(row) {
   return {
     id: String(row.id),

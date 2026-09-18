@@ -4,11 +4,11 @@ export function requireString(value, label, { min = 1, max = 255 } = {}) {
   const text = typeof value === "string" ? value.trim() : "";
 
   if (text.length < min) {
-    throw badRequest(`${label} es obligatorio`);
+    throw badRequest(`El campo ${label} es obligatorio`);
   }
 
   if (text.length > max) {
-    throw badRequest(`${label} no puede superar ${max} caracteres`);
+    throw badRequest(`El campo ${label} no puede superar ${max} caracteres`);
   }
 
   return text;
@@ -22,10 +22,20 @@ export function optionalString(value, label, { max = 255 } = {}) {
   const text = String(value).trim();
 
   if (text.length > max) {
-    throw badRequest(`${label} no puede superar ${max} caracteres`);
+    throw badRequest(`El campo ${label} no puede superar ${max} caracteres`);
   }
 
   return text.length > 0 ? text : null;
+}
+
+export function requireEmail(value) {
+  const email = requireString(value, "correo", { max: 254 }).toLowerCase();
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw badRequest("El correo no es válido");
+  }
+
+  return email;
 }
 
 export function parsePagination(query = {}) {

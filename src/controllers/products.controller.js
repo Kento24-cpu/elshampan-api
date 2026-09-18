@@ -4,8 +4,8 @@ import { optionalString, parseId, parsePagination } from "../utils/validate.js";
 
 export async function getProducts(req, res) {
   const { limit, offset } = parsePagination(req.query);
-  const category = optionalString(req.query.category, "category", { max: 60 });
-  const q = optionalString(req.query.q, "q", { max: 100 });
+  const category = optionalString(req.query.category, "categoría", { max: 60 });
+  const q = optionalString(req.query.q, "búsqueda", { max: 100 });
 
   const products = await listProducts({ category, q, limit, offset });
 
