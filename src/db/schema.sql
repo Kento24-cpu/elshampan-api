@@ -1,0 +1,78 @@
+CREATE TABLE IF NOT EXISTS categories (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(60) NOT NULL,
+  image VARCHAR(2048) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_categories_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(120) NOT NULL,
+  email VARCHAR(254) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  phone VARCHAR(30) NULL,
+  role ENUM('customer', 'admin') NOT NULL DEFAULT 'customer',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_users_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS products (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  category_id INT UNSIGNED NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  brand VARCHAR(120) NOT NULL,
+  country VARCHAR(80) NOT NULL,
+  volume VARCHAR(40) NOT NULL,
+  price INT UNSIGNED NOT NULL,
+  old_price INT UNSIGNED NULL,
+  stock INT UNSIGNED NOT NULL DEFAULT 0,
+  badge VARCHAR(40) NULL,
+  image VARCHAR(2048) NOT NULL,
+  rating DECIMAL(2, 1) NOT NULL DEFAULT 0.0,
+  reviews INT UNSIGNED NOT NULL DEFAULT 0,
+  description TEXT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_products_category (category_id),
+  CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS orders (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  code VARCHAR(20) NULL,
+  user_id INT UNSIGNED NULL,
+  customer_name VARCHAR(120) NOT NULL,
+  customer_phone VARCHAR(30) NOT NULL,
+  address VARCHAR(400) NOT NULL,
+  notes VARCHAR(400) NULL,
+  total INT UNSIGNED NOT NULL DEFAULT 0,
+  status ENUM('recibido', 'confirmado', 'enviado', 'entregado', 'cancelado') NOT NULL DEFAULT 'recibido',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_orders_code (code),
+  KEY idx_orders_user (user_id),
+  CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS order_items (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  order_id INT UNSIGNED NOT NULL,
+  product_id INT UNSIGNED NOT NULL,
+  product_name VARCHAR(200) NOT NULL,
+  unit_price INT UNSIGNED NOT NULL,
+  quantity INT UNSIGNED NOT NULL,
+  subtotal INT UNSIGNED NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_order_items_order (order_id),
+  KEY idx_order_items_product (product_id),
+  CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
+  CONSTRAINT fk_order_items_product FOREIGN KEY (product_id) REFERENCES products (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
