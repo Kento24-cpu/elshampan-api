@@ -33,3 +33,41 @@ export function serializeProduct(row) {
     description: row.description ?? null
   };
 }
+
+const formatDate = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${date.getFullYear()}-${month}-${day}`;
+};
+
+export function serializeOrderItem(row) {
+  return {
+    product_id: String(row.product_id),
+    name: row.product_name,
+    quantity: Number(row.quantity),
+    unit_price: Number(row.unit_price),
+    subtotal: Number(row.subtotal)
+  };
+}
+
+export function serializeOrder(row) {
+  return {
+    id: String(row.id),
+    code: row.code,
+    date: formatDate(row.created_at),
+    created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
+    status: row.status,
+    total: Number(row.total),
+    customer_name: row.customer_name,
+    customer_phone: row.customer_phone,
+    address: row.address,
+    notes: row.notes ?? null,
+    items: (row.items ?? []).map(serializeOrderItem)
+  };
+}
