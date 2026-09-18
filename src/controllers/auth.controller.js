@@ -2,9 +2,10 @@ import bcrypt from "bcryptjs";
 import { signToken } from "../services/tokens.service.js";
 import {
   createUser,
-  findUserWithPasswordByEmail
+  findUserWithPasswordByEmail,
+  updateUser
 } from "../services/users.service.js";
-import { unauthorized } from "../utils/errors.js";
+import { badRequest, unauthorized } from "../utils/errors.js";
 import { serializeUser } from "../utils/serializers.js";
 import {
   optionalString,
@@ -48,4 +49,24 @@ export async function login(req, res) {
   const user = serializeUser(found);
 
   res.json({ token: signToken(user), user });
+}
+
+export async function me(req, res) {
+  res.json(req.user);
+}
+
+export async function updateMe(req, res) {
+  const name =
+    req.body.name === undefined
+      ? null
+      : requireString(req.body.name, "nombre", { max: 120 });
+  const phone = optionalString(req.body.phone, "teléfono", { max: 30 });
+
+  if (name === null && phone === null) {
+    throw badRequest("No hay datos para actualizar");
+  }
+
+  const user = await updateUser(req.user.id, { name, phone });
+
+  res.json(user);
 }

@@ -38,3 +38,24 @@ export async function findUserWithPasswordByEmail(email) {
 
   return rows[0] ?? null;
 }
+
+export async function updateUser(id, { name, phone }) {
+  const fields = [];
+  const params = [];
+
+  if (name !== null) {
+    fields.push("name = ?");
+    params.push(name);
+  }
+
+  if (phone !== null) {
+    fields.push("phone = ?");
+    params.push(phone);
+  }
+
+  params.push(id);
+
+  await pool.query(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`, params);
+
+  return findUserById(id);
+}
