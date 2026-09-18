@@ -138,3 +138,41 @@ export async function findOrderById(id) {
     items: itemsByOrderId.get(rows[0].id) ?? []
   });
 }
+
+export async function listOrdersForUser(userId, { limit, offset }) {
+  const [rows] = await pool.query(
+    `SELECT ${ORDER_COLUMNS}
+       FROM orders
+      WHERE user_id = ?
+      ORDER BY id DESC
+      LIMIT ? OFFSET ?`,
+    [userId, limit, offset]
+  );
+
+  const itemsByOrderId = await loadItemsByOrderId(rows.map((row) => row.id));
+
+  return rows.map((row) =>
+    serializeOrder({ ...row, items: itemsByOrderId.get(row.id) ?? [] })
+  );
+}
+
+export async function findOrderForUser(id, userId) {
+  const [rows] = await pool.query(
+    `SELECT ${ORDER_COLUMNS}
+       FROM orders
+      WHERE id = ? AND user_id = ?
+      LIMIT 1`,
+    [id, userId]
+  );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const itemsByOrderId = await loadItemsByOrderId([id]);
+
+  return serializeOrder({
+    ...rows[0],
+    items: itemsByOrderId.get(rows[0].id) ?? []
+  });
+}

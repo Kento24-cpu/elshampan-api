@@ -1,6 +1,15 @@
-import { createOrder } from "../services/orders.service.js";
-import { badRequest } from "../utils/errors.js";
-import { optionalString, parseId, requireString } from "../utils/validate.js";
+import {
+  createOrder,
+  findOrderForUser,
+  listOrdersForUser
+} from "../services/orders.service.js";
+import { badRequest, notFound } from "../utils/errors.js";
+import {
+  optionalString,
+  parseId,
+  parsePagination,
+  requireString
+} from "../utils/validate.js";
 
 const MAX_ITEMS = 50;
 const MAX_QUANTITY = 99;
@@ -68,4 +77,23 @@ export async function createOrderHandler(req, res) {
   });
 
   res.status(201).json(order);
+}
+
+export async function getOrders(req, res) {
+  const { limit, offset } = parsePagination(req.query);
+
+  const orders = await listOrdersForUser(req.user.id, { limit, offset });
+
+  res.json(orders);
+}
+
+export async function getOrder(req, res) {
+  const id = parseId(req.params.id);
+  const order = id === null ? null : await findOrderForUser(id, req.user.id);
+
+  if (!order) {
+    throw notFound("Pedido no encontrado");
+  }
+
+  res.json(order);
 }
