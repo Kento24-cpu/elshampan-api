@@ -1,9 +1,12 @@
 import cors from "cors";
 import express from "express";
+import { setPool } from "./db/pool.js";
 import { errorHandler, notFound } from "./middleware/error.js";
 import { apiRouter } from "./routes/index.js";
 
-export function createApp() {
+export function createApp({ pool } = {}) {
+  if (pool) setPool(pool);
+
   const app = express();
 
   app.disable("x-powered-by");
