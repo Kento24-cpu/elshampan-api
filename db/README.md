@@ -1,39 +1,37 @@
 # Database setup
 
-The API runs on **MySQL Server** (`mysql2`, no ORM). **MySQL Workbench** and the **phpMyAdmin bundled with XAMPP** are both used to inspect and manage the same server.
+The API talks to MySQL/MariaDB through `mysql2` (no ORM). Both the **phpMyAdmin bundled with XAMPP** and **MySQL Workbench** are used to inspect and manage the same server.
 
-> Verified on this machine: the `MySQL84` service owns port `3306`, XAMPP's MariaDB is stopped, and XAMPP runs PHP 8.2 with `mysqlnd`, which supports MySQL's default `caching_sha2_password` authentication.
+The schema and seed are validated on **MariaDB 10.4.32** (the engine XAMPP ships) and are written to also run on MySQL 8.x. `DECIMAL` columns come back from the driver as strings, which is why the repositories convert prices and totals with `Number()`.
 
-## 1. Decide which server owns port 3306
+## 1. Only one engine can own port 3306
 
-MySQL Server and XAMPP's MariaDB both default to port `3306`, so only one can listen there.
+MySQL Server and XAMPP's MariaDB both default to `3306`, so run one at a time.
 
-- **Option A (recommended, and the current state):** keep MySQL Server on `3306` and never start MySQL from the XAMPP Control Panel. Use XAMPP only for Apache/phpMyAdmin.
-- **Option B:** keep both running by moving XAMPP's MariaDB to `3307`. Edit `C:\xampp\mysql\bin\my.ini`, set `port=3307` under `[mysqld]`, and restart MySQL from the XAMPP Control Panel.
+- **Using XAMPP's MariaDB (current setup):** start MySQL from the XAMPP Control Panel. The standalone `MySQL84` Windows service is set to start automatically, so it reclaims `3306` on every reboot — set it to **Manual** under `services.msc` (service properties → Startup type) so the two stop fighting over the port.
+- **Using MySQL Server instead:** leave the `MySQL84` service running and never start MySQL from the XAMPP Control Panel.
 
-## 2. Point phpMyAdmin at MySQL Server
+## 2. phpMyAdmin
 
-`C:\xampp\phpMyAdmin\config.inc.php` already uses `host = 127.0.0.1` and no explicit port, so it defaults to `3306` and talks to MySQL Server. Only the credentials need fixing: the file ships with `auth_type = 'config'` and a blank `root` password, which MySQL rejects.
+`C:\xampp\phpMyAdmin\config.inc.php` already points at `host = 127.0.0.1` with no explicit port, so it reaches whichever engine owns `3306`.
 
-Pick one:
-
-```php
-// Log in with your own MySQL credentials on every visit
-$cfg['Servers'][$i]['auth_type'] = 'cookie';
-```
+XAMPP ships with `auth_type = 'config'` and a blank `root` password, which matches a default XAMPP MariaDB and works out of the box. If you set a password on `root`, either update the file:
 
 ```php
-// Or keep auto-login with a real administrative account
 $cfg['Servers'][$i]['auth_type'] = 'config';
 $cfg['Servers'][$i]['user'] = 'root';
 $cfg['Servers'][$i]['password'] = 'your-root-password';
 ```
 
-With Option B, add a second `$cfg['Servers'][2]` block on port `3307` to browse MariaDB.
+or switch to cookie auth so phpMyAdmin asks you to log in:
+
+```php
+$cfg['Servers'][$i]['auth_type'] = 'cookie';
+```
 
 ## 3. Create the application user
 
-In MySQL Workbench or phpMyAdmin, as an administrator:
+In phpMyAdmin (*User accounts → Add user account*) or MySQL Workbench, as an administrator:
 
 ```sql
 CREATE USER 'elshampan'@'localhost' IDENTIFIED BY 'your-password-here';
@@ -41,24 +39,22 @@ GRANT ALL PRIVILEGES ON elshampan.* TO 'elshampan'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-The account uses MySQL's default `caching_sha2_password`, which both `mysql2` and phpMyAdmin handle here. Note that `IDENTIFIED WITH mysql_native_password` is **not** an option on MySQL 8.4 — the plugin was removed in that release.
+No special authentication plugin is needed: MariaDB authenticates with `mysql_native_password` by default, and `mysql2` handles both that and MySQL 8's `caching_sha2_password`. (`mysql_native_password` no longer exists on MySQL 8.4, so do not reach for it if you switch engines.)
 
 ## 4. Import schema and seed
 
-Pick whichever tool you prefer — all three run the same files, in this order:
+Run the files in this order. Both are safe to re-run: tables use `CREATE TABLE IF NOT EXISTS`, category and user rows use `INSERT IGNORE`, and product rows are skipped when a product with the same name already exists.
 
-**MySQL Workbench:** open `db/schema.sql`, execute it (*Query → Execute All*), then do the same with `db/seed.sql`.
+**phpMyAdmin:** open <http://localhost/phpmyadmin>, go to *Import*, choose `db/schema.sql`, press **Import**; repeat with `db/seed.sql`.
 
-**phpMyAdmin:** *Import → Choose file*, select `db/schema.sql`, **Import**; repeat with `db/seed.sql`.
+**MySQL Workbench:** open each file and use *Query → Execute (All or Selection)*, `schema.sql` first.
 
-**Command line:**
+**Command line** (the `source` form avoids the `<` operator, which PowerShell does not support):
 
 ```bash
-mysql -u elshampan -p --default-character-set=utf8mb4 < db/schema.sql
-mysql -u elshampan -p --default-character-set=utf8mb4 < db/seed.sql
+mysql -u elshampan -p --default-character-set=utf8mb4 -e "source db/schema.sql"
+mysql -u elshampan -p --default-character-set=utf8mb4 -e "source db/seed.sql"
 ```
-
-Both files are safe to re-run: tables use `CREATE TABLE IF NOT EXISTS` and rows are skipped when they already exist.
 
 ## 5. Verify
 
