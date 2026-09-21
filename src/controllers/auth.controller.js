@@ -10,6 +10,12 @@ export async function login(req, res) {
   res.json(await authService.login(req.body));
 }
 
+export async function logout(req, res) {
+  await authService.logout(req.sessionToken);
+
+  res.status(204).end();
+}
+
 export function me(req, res) {
   res.json(req.user);
 }

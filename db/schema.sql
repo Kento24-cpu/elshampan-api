@@ -1,6 +1,6 @@
--- El Shampan - MySQL schema
--- Target: MySQL Server 8.x (also runs on MariaDB 10.4+)
--- Run once against the server that backs the API.
+-- El Shampan - database schema
+-- Primary target: MariaDB 10.4 (the engine shipped with XAMPP). Also runs on MySQL 8.x.
+-- Run once against the server that backs the API. Existing installs upgrade through db/migrations/.
 
 CREATE DATABASE IF NOT EXISTS elshampan
   CHARACTER SET utf8mb4
@@ -36,10 +36,10 @@ CREATE TABLE IF NOT EXISTS products (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_products_category (category_id),
-  KEY idx_products_name (name),
   CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE SET NULL,
   CONSTRAINT chk_products_stock CHECK (stock >= 0),
-  CONSTRAINT chk_products_price CHECK (price >= 0)
+  CONSTRAINT chk_products_price CHECK (price >= 0),
+  CONSTRAINT chk_products_rating CHECK (rating BETWEEN 0 AND 5)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS users (
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS sessions (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   user_id INT UNSIGNED NOT NULL,
-  token CHAR(64) NOT NULL,
+  token CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   expires_at DATETIME NOT NULL,
   PRIMARY KEY (id),
@@ -80,9 +80,9 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_orders_code (code),
-  KEY idx_orders_user (user_id),
-  KEY idx_orders_created (created_at),
-  CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
+  KEY idx_orders_user_created (user_id, created_at, id),
+  CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL,
+  CONSTRAINT chk_orders_total CHECK (total >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS order_items (
@@ -94,9 +94,11 @@ CREATE TABLE IF NOT EXISTS order_items (
   quantity INT NOT NULL,
   subtotal DECIMAL(10,2) NOT NULL,
   PRIMARY KEY (id),
-  KEY idx_order_items_order (order_id),
+  KEY idx_order_items_order_by_id (order_id, id),
   KEY idx_order_items_product (product_id),
   CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
   CONSTRAINT fk_order_items_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE SET NULL,
-  CONSTRAINT chk_order_items_quantity CHECK (quantity > 0)
+  CONSTRAINT chk_order_items_quantity CHECK (quantity > 0),
+  CONSTRAINT chk_order_items_unit_price CHECK (unit_price >= 0),
+  CONSTRAINT chk_order_items_subtotal CHECK (subtotal >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

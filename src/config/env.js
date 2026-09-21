@@ -12,6 +12,9 @@ export const config = {
   port: toInt(process.env.PORT, 3000),
   host: process.env.HOST ?? "0.0.0.0",
   sessionTtlDays: toInt(process.env.SESSION_TTL_DAYS, 7),
+  corsOrigins: process.env.CORS_ORIGINS ?? "*",
+  authRateLimitWindowMs: toInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
+  authRateLimitLimit: toInt(process.env.AUTH_RATE_LIMIT_LIMIT, 20),
   db: {
     host: process.env.DB_HOST ?? "localhost",
     port: toInt(process.env.DB_PORT, 3306),

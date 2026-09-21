@@ -1,14 +1,17 @@
-import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { config } from "../config/env.js";
 import * as sessionsRepository from "../repositories/sessions.repository.js";
 import * as usersRepository from "../repositories/users.repository.js";
 import { httpError } from "../utils/httpError.js";
+import { generateToken } from "../utils/token.js";
 import { LIMITS, optionalText, requireText } from "../utils/validation.js";
 
 const BCRYPT_ROUNDS = 10;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// Compared against when the email is unknown, so both branches cost the same.
+const DUMMY_HASH = "$2b$10$UXJFDuHJJ5w/.O48d8znBu8H8jBbU0K7V3pXvWvx10gBns/DB2xwS";
 
 const normalizeEmail = (email) => email.toLowerCase();
 
@@ -35,7 +38,7 @@ const parsePassword = (value) => {
 };
 
 const issueToken = async (userId) => {
-  const token = crypto.randomBytes(32).toString("hex");
+  const token = generateToken();
   const expiresAt = new Date(Date.now() + config.sessionTtlDays * MS_PER_DAY);
 
   await sessionsRepository.createSession({ userId, token, expiresAt });
@@ -66,7 +69,10 @@ export async function register(body = {}) {
     throw error;
   }
 
-  return { user, token: await issueToken(user.id) };
+  const token = await issueToken(user.id);
+  await sessionsRepository.deleteExpiredSessions();
+
+  return { user, token };
 }
 
 export async function login(body = {}) {
@@ -76,10 +82,12 @@ export async function login(body = {}) {
   if (!email || !password) throw httpError(400, "Correo y contraseña son obligatorios");
 
   const account = await usersRepository.findUserByEmail(normalizeEmail(email));
-  if (!account) throw httpError(401, "Credenciales inválidas");
 
-  const matches = await bcrypt.compare(password, account.passwordHash);
-  if (!matches) throw httpError(401, "Credenciales inválidas");
+  // Always compare, even without an account, so the response time does not reveal
+  // whether the email exists.
+  const matches = await bcrypt.compare(password, account?.passwordHash ?? DUMMY_HASH);
+
+  if (!account || !matches) throw httpError(401, "Credenciales inválidas");
 
   const user = {
     id: account.id,
@@ -88,7 +96,14 @@ export async function login(body = {}) {
     phone: account.phone
   };
 
-  return { user, token: await issueToken(user.id) };
+  const token = await issueToken(user.id);
+  await sessionsRepository.deleteExpiredSessions();
+
+  return { user, token };
+}
+
+export async function logout(token) {
+  if (token) await sessionsRepository.deleteSession(token);
 }
 
 export async function updateProfile(userId, body = {}) {

@@ -32,12 +32,18 @@ const userRow = (overrides = {}) => ({
   ...overrides
 });
 
+const purgeSessions = {
+  match: (sql) => sql.includes("DELETE FROM sessions WHERE expires_at"),
+  respond: () => [{ affectedRows: 0 }]
+};
+
 const registrationPool = () =>
   createFakePool([
     { match: (sql) => sql.includes("FROM users WHERE email = ?"), respond: () => [[]] },
     { match: (sql) => sql.includes("INSERT INTO users"), respond: () => [{ insertId: 7 }] },
     { match: (sql) => sql.includes("FROM users WHERE id = ?"), respond: () => [[userRow()]] },
-    { match: (sql) => sql.includes("INSERT INTO sessions"), respond: () => [{ insertId: 1 }] }
+    { match: (sql) => sql.includes("INSERT INTO sessions"), respond: () => [{ insertId: 1 }] },
+    purgeSessions
   ]);
 
 test("register rejects a missing name", async () => {
@@ -157,7 +163,8 @@ test("login returns a token for valid credentials", async () => {
       match: (sql) => sql.includes("FROM users WHERE email = ?"),
       respond: () => [[userRow({ password_hash: passwordHash })]]
     },
-    { match: (sql) => sql.includes("INSERT INTO sessions"), respond: () => [{ insertId: 1 }] }
+    { match: (sql) => sql.includes("INSERT INTO sessions"), respond: () => [{ insertId: 1 }] },
+    purgeSessions
   ]);
 
   await withServer(pool, async (server) => {

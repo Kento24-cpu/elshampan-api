@@ -1,9 +1,10 @@
 import { getPool } from "../db/pool.js";
+import { hashToken } from "../utils/token.js";
 
 export async function createSession({ userId, token, expiresAt }) {
   await getPool().query(
     "INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)",
-    [userId, token, expiresAt]
+    [userId, hashToken(token), expiresAt]
   );
 }
 
@@ -14,12 +15,16 @@ export async function findUserByToken(token) {
        JOIN users u ON u.id = s.user_id
       WHERE s.token = ? AND s.expires_at > NOW()
       LIMIT 1`,
-    [token]
+    [hashToken(token)]
   );
 
   return rows[0] ?? null;
 }
 
 export async function deleteSession(token) {
-  await getPool().query("DELETE FROM sessions WHERE token = ?", [token]);
+  await getPool().query("DELETE FROM sessions WHERE token = ?", [hashToken(token)]);
+}
+
+export async function deleteExpiredSessions() {
+  await getPool().query("DELETE FROM sessions WHERE expires_at < NOW()");
 }
