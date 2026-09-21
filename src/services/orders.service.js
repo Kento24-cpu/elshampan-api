@@ -1,16 +1,6 @@
 import * as ordersRepository from "../repositories/orders.repository.js";
-
-const httpError = (status, message) => {
-  const error = new Error(message);
-  error.status = status;
-  return error;
-};
-
-const parsePositiveInt = (value) => {
-  const parsed = Number.parseInt(value, 10);
-
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-};
+import { httpError } from "../utils/httpError.js";
+import { LIMITS, optionalText, parsePositiveInt, requireText } from "../utils/validation.js";
 
 const mergeItems = (rawItems) => {
   const merged = new Map();
@@ -25,19 +15,20 @@ const mergeItems = (rawItems) => {
     merged.set(productId, (merged.get(productId) ?? 0) + quantity);
   }
 
+  if (merged.size > LIMITS.orderLines) {
+    throw httpError(400, `Un pedido no puede incluir más de ${LIMITS.orderLines} productos distintos`);
+  }
+
   return [...merged].map(([product_id, quantity]) => ({ product_id, quantity }));
 };
 
 export async function createOrder(userId, body = {}) {
-  const customerName = String(body.customer_name ?? "").trim();
-  const customerPhone = String(body.customer_phone ?? "").trim();
-  const address = String(body.address ?? "").trim();
-  const notes = String(body.notes ?? "").trim() || null;
+  const customerName = requireText(body.customer_name, "El nombre del cliente", LIMITS.customerName);
+  const customerPhone = requireText(body.customer_phone, "El teléfono del cliente", LIMITS.customerPhone);
+  const address = requireText(body.address, "La dirección de entrega", LIMITS.address);
+  const notes = optionalText(body.notes, "Las notas", LIMITS.notes);
   const rawItems = Array.isArray(body.items) ? body.items : [];
 
-  if (!customerName) throw httpError(400, "El nombre del cliente es obligatorio");
-  if (!customerPhone) throw httpError(400, "El teléfono del cliente es obligatorio");
-  if (!address) throw httpError(400, "La dirección de entrega es obligatoria");
   if (rawItems.length === 0) throw httpError(400, "El pedido debe incluir al menos un producto");
 
   return ordersRepository.createOrder({

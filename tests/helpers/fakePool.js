@@ -1,5 +1,6 @@
 export function createFakePool(handlers = []) {
   const calls = [];
+  const transaction = [];
 
   const run = async (sql, params = []) => {
     calls.push({ sql, params });
@@ -15,14 +16,23 @@ export function createFakePool(handlers = []) {
 
   const connection = {
     query: run,
-    beginTransaction: async () => {},
-    commit: async () => {},
-    rollback: async () => {},
-    release: () => {}
+    beginTransaction: async () => {
+      transaction.push("begin");
+    },
+    commit: async () => {
+      transaction.push("commit");
+    },
+    rollback: async () => {
+      transaction.push("rollback");
+    },
+    release: () => {
+      transaction.push("release");
+    }
   };
 
   return {
     calls,
+    transaction,
     query: run,
     getConnection: async () => connection,
     end: async () => {}

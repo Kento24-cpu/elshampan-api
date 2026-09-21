@@ -11,6 +11,9 @@ const FROM_PRODUCTS = `
   LEFT JOIN categories c ON c.id = p.category_id
 `;
 
+// `%` and `_` are LIKE wildcards, so a user searching for "%" would match everything.
+const escapeLike = (value) => value.replace(/[\\%_]/g, (character) => `\\${character}`);
+
 const mapProduct = (row) => ({
   id: row.id,
   name: row.name,
@@ -38,8 +41,10 @@ export async function listProducts({ category, search, limit } = {}) {
   }
 
   if (search) {
+    const term = `%${escapeLike(search)}%`;
+
     conditions.push("(p.name LIKE ? OR p.brand LIKE ?)");
-    params.push(`%${search}%`, `%${search}%`);
+    params.push(term, term);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
