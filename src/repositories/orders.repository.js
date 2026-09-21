@@ -4,6 +4,10 @@ import { httpError } from "../utils/httpError.js";
 const SELECT_ORDER_COLUMNS =
   "id, code, status, address, total, customer_name, customer_phone, notes, created_at";
 
+// `total` and `subtotal` are DECIMAL(10,2). A server running without STRICT_TRANS_TABLES
+// silently clamps an overflowing value instead of failing, so guard it here.
+const MAX_DECIMAL = 99999999.99;
+
 const pad = (value) => String(value).padStart(2, "0");
 
 const formatDate = (value) => {
@@ -84,6 +88,10 @@ export async function createOrder({ userId, customerName, customerPhone, address
 
       const unitPrice = Number(product.price);
 
+      if (unitPrice * item.quantity > MAX_DECIMAL) {
+        throw httpError(400, `El importe de ${product.name} supera el máximo permitido`);
+      }
+
       return {
         productId: product.id,
         productName: product.name,
@@ -94,6 +102,8 @@ export async function createOrder({ userId, customerName, customerPhone, address
     });
 
     const total = lines.reduce((sum, line) => sum + line.subtotal, 0);
+
+    if (total > MAX_DECIMAL) throw httpError(400, "El total del pedido supera el máximo permitido");
 
     const [inserted] = await connection.query(
       `INSERT INTO orders (user_id, customer_name, customer_phone, address, notes, total)
