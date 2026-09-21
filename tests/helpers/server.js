@@ -1,4 +1,5 @@
 import { createApp } from "../../src/app.js";
+import { closePool } from "../../src/db/pool.js";
 
 export async function startTestServer() {
   const app = createApp();
@@ -15,4 +16,9 @@ export async function startTestServer() {
         server.close((error) => (error ? reject(error) : resolve()));
       })
   };
+}
+
+export async function stopTestServer(server) {
+  await server.close();
+  await closePool();
 }

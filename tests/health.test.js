@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
-import { startTestServer } from "./helpers/server.js";
+import { startTestServer, stopTestServer } from "./helpers/server.js";
 
 let server;
 
@@ -9,14 +9,14 @@ before(async () => {
 });
 
 after(async () => {
-  await server.close();
+  await stopTestServer(server);
 });
 
 test("GET /api/health responds ok", async () => {
   const response = await fetch(`${server.url}/api/health`);
 
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { status: "ok" });
+  assert.deepEqual(await response.json(), { status: "ok", db: "up" });
 });
 
 test("unknown route responds 404 with a message", async () => {
