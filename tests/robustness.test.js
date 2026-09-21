@@ -253,3 +253,21 @@ test("limit is clamped to the maximum page size", async () => {
     assert.match(pool.calls[0].sql, /LIMIT 100\b/);
   });
 });
+
+test("checkout rejects an amount that would overflow the decimal column", async () => {
+  const pool = createFakePool([
+    {
+      match: (sql) => sql.includes("FROM products") && sql.includes("FOR UPDATE"),
+      respond: () => [[{ id: 1, name: "Johnnie Walker Black Label", price: "2750.00", stock: 2000000000 }]]
+    }
+  ]);
+
+  await withServer(pool, async (server) => {
+    const response = await postJson(server, "/api/orders", checkoutBody({
+      items: [{ product_id: 1, quantity: 100000000 }]
+    }));
+
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).message, /supera el máximo permitido/);
+  });
+});
