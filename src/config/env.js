@@ -11,6 +11,7 @@ export const config = {
   env: process.env.NODE_ENV ?? "development",
   port: toInt(process.env.PORT, 3000),
   host: process.env.HOST ?? "0.0.0.0",
+  logLevel: process.env.LOG_LEVEL ?? "info",
   sessionTtlDays: toInt(process.env.SESSION_TTL_DAYS, 7),
   corsOrigins: process.env.CORS_ORIGINS ?? "*",
   authRateLimitWindowMs: toInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),

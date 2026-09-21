@@ -30,8 +30,8 @@ test("GET /api/health reports the database as down when the connection fails", a
   try {
     const response = await fetch(`${downServer.url}/api/health`);
 
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { status: "ok", db: "down" });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { status: "degraded", db: "down" });
   } finally {
     await downServer.close();
   }

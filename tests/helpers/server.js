@@ -1,11 +1,15 @@
 import { createApp } from "../../src/app.js";
 
 // The configured auth rate limit (20 per 15 minutes) would trip the suite, so tests
-// get a wide default and the ones that exercise the limit pass their own.
-const DEFAULT_AUTH_RATE_LIMIT = { windowMs: 60_000, limit: 10_000 };
+// get a wide default and the ones that exercise the limit pass their own. Request
+// logging is off to keep the test output readable.
+const TEST_DEFAULTS = {
+  authRateLimit: { windowMs: 60_000, limit: 10_000 },
+  logLevel: "silent"
+};
 
 export async function startTestServer(options = {}) {
-  const app = createApp({ authRateLimit: DEFAULT_AUTH_RATE_LIMIT, ...options });
+  const app = createApp({ ...TEST_DEFAULTS, ...options });
   const server = app.listen(0, "127.0.0.1");
 
   await new Promise((resolve) => server.once("listening", resolve));
