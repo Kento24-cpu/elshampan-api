@@ -1,13 +1,8 @@
 import { getPool } from "../db/pool.js";
+import { httpError } from "../utils/httpError.js";
 
 const SELECT_ORDER_COLUMNS =
   "id, code, status, address, total, customer_name, customer_phone, notes, created_at";
-
-const httpError = (status, message) => {
-  const error = new Error(message);
-  error.status = status;
-  return error;
-};
 
 const pad = (value) => String(value).padStart(2, "0");
 
@@ -44,6 +39,8 @@ const mapOrder = (row, items) => ({
 });
 
 async function findItemsByOrderIds(orderIds) {
+  if (orderIds.length === 0) return new Map();
+
   const [rows] = await getPool().query(
     `SELECT order_id, product_id, product_name, unit_price, quantity, subtotal
        FROM order_items
@@ -142,7 +139,12 @@ export async function createOrder({ userId, customerName, customerPhone, address
       }))
     };
   } catch (error) {
-    await connection.rollback();
+    try {
+      await connection.rollback();
+    } catch {
+      // The connection is already unusable; keep the original error.
+    }
+
     throw error;
   } finally {
     connection.release();
