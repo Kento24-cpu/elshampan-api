@@ -74,6 +74,16 @@ SESSION_TTL_DAYS=7
 
 `.env` is gitignored — never commit it.
 
+## 7. Upgrading an existing database
+
+Fresh installs already get everything from `db/schema.sql`. An installation created before the hardening work needs the one-off scripts in `db/migrations/`, run once and in order:
+
+```bash
+mysql -u elshampan -p --default-character-set=utf8mb4 -e "source db/migrations/001_harden_sessions_and_indexes.sql"
+```
+
+`001` stores a hash of the session token instead of the token itself, so it **deletes every existing session** — everyone has to log in again. It also adds the composite indexes and the defensive `CHECK` constraints.
+
 ## Demo account
 
 The seed creates `demo@elshampan.com` / `Demo1234`, matching the credentials shown in the mobile app.
@@ -88,3 +98,29 @@ The seed creates `demo@elshampan.com` / `Demo1234`, matching the credentials sho
 | `sessions` | Opaque bearer tokens (`token`, `expires_at`) issued by the auth endpoints |
 | `orders` | Orders, `user_id` is `NULL` for guest checkout, `code` is assigned after insert |
 | `order_items` | Order lines with a price/name snapshot of the product at purchase time |
+
+## Server settings worth checking
+
+- **Run MySQL in strict mode.** XAMPP's MariaDB ships with `sql_mode = NO_ZERO_IN_DATE,NO_ZERO_DATE,NO_ENGINE_SUBSTITUTION`, so an over-long string is **silently truncated** instead of rejected. The API validates every field length before writing, but strict mode is still the right default for the database itself. Add this under `[mysqld]` in `C:\xampp\mysql\bin\my.ini` and restart MySQL from the XAMPP Control Panel:
+
+  ```ini
+  sql_mode=STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+  ```
+
+- **Time zone.** `sessions.expires_at` is written by Node and compared against the server's `NOW()`, which assumes the API and the database run on the same machine. Deploying them apart means standardising on UTC.
+
+## Integration tests
+
+`npm test` needs no database. A second suite runs real SQL against a throwaway `elshampan_test` database that it drops and recreates on every run, so it never touches `elshampan`:
+
+```powershell
+$env:RUN_DB_TESTS="1"; npm test
+```
+
+The account in `.env` needs rights on that database. Create it once as an administrator:
+
+```sql
+CREATE DATABASE IF NOT EXISTS elshampan_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL PRIVILEGES ON elshampan_test.* TO 'elshampan'@'localhost';
+FLUSH PRIVILEGES;
+```
