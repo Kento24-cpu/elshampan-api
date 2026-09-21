@@ -2,24 +2,34 @@
 
 The API runs on **MySQL Server** (`mysql2`, no ORM). **MySQL Workbench** and the **phpMyAdmin bundled with XAMPP** are both used to inspect and manage the same server.
 
+> Verified on this machine: the `MySQL84` service owns port `3306`, XAMPP's MariaDB is stopped, and XAMPP runs PHP 8.2 with `mysqlnd`, which supports MySQL's default `caching_sha2_password` authentication.
+
 ## 1. Decide which server owns port 3306
 
 MySQL Server and XAMPP's MariaDB both default to port `3306`, so only one can listen there.
 
-- **Option A (recommended):** keep MySQL Server on `3306` and never start MySQL from the XAMPP Control Panel. Use XAMPP only for Apache/phpMyAdmin.
+- **Option A (recommended, and the current state):** keep MySQL Server on `3306` and never start MySQL from the XAMPP Control Panel. Use XAMPP only for Apache/phpMyAdmin.
 - **Option B:** keep both running by moving XAMPP's MariaDB to `3307`. Edit `C:\xampp\mysql\bin\my.ini`, set `port=3307` under `[mysqld]`, and restart MySQL from the XAMPP Control Panel.
 
 ## 2. Point phpMyAdmin at MySQL Server
 
-Edit `C:\xampp\phpMyAdmin\config.inc.php`:
+`C:\xampp\phpMyAdmin\config.inc.php` already uses `host = 127.0.0.1` and no explicit port, so it defaults to `3306` and talks to MySQL Server. Only the credentials need fixing: the file ships with `auth_type = 'config'` and a blank `root` password, which MySQL rejects.
+
+Pick one:
 
 ```php
-$cfg['Servers'][1]['host'] = '127.0.0.1';
-$cfg['Servers'][1]['port'] = '3306';
-$cfg['Servers'][1]['auth_type'] = 'cookie';
+// Log in with your own MySQL credentials on every visit
+$cfg['Servers'][$i]['auth_type'] = 'cookie';
 ```
 
-Use `auth_type = 'config'` with explicit `user` / `password` if you prefer not to log in every time. With Option B, add a second `$cfg['Servers'][2]` block on port `3307` to browse MariaDB.
+```php
+// Or keep auto-login with a real administrative account
+$cfg['Servers'][$i]['auth_type'] = 'config';
+$cfg['Servers'][$i]['user'] = 'root';
+$cfg['Servers'][$i]['password'] = 'your-root-password';
+```
+
+With Option B, add a second `$cfg['Servers'][2]` block on port `3307` to browse MariaDB.
 
 ## 3. Create the application user
 
@@ -31,7 +41,7 @@ GRANT ALL PRIVILEGES ON elshampan.* TO 'elshampan'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-If phpMyAdmin cannot authenticate with that user (PHP built against an older `mysqlnd`), recreate it with `IDENTIFIED WITH mysql_native_password BY 'your-password-here'`. The API itself supports the default `caching_sha2_password`.
+The account uses MySQL's default `caching_sha2_password`, which both `mysql2` and phpMyAdmin handle here. Note that `IDENTIFIED WITH mysql_native_password` is **not** an option on MySQL 8.4 — the plugin was removed in that release.
 
 ## 4. Import schema and seed
 
