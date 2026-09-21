@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import { after, before, test } from "node:test";
 import * as ordersRepository from "../../src/repositories/orders.repository.js";
 import { startTestServer } from "../helpers/server.js";
 import { countRows, isEnabled, prepareTestDatabase } from "./setup.js";
+
+const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex");
 
 // These tests are the only ones that execute real SQL. They are skipped unless
 // RUN_DB_TESTS=1 and they only ever touch the elshampan_test database.
@@ -297,4 +300,28 @@ dbTest("a user cannot read another user's order", async () => {
   const { status } = await request(`/api/orders/${history[0].id}`, { token: registered.body.token });
 
   assert.equal(status, 404);
+});
+
+dbTest("the session token is stored hashed and logout revokes it", async () => {
+  const session = await request("/api/auth/login", {
+    method: "POST",
+    body: { email: "demo@elshampan.com", password: "Demo1234" }
+  });
+  const { token } = session.body;
+  const [rows] = await pool.query("SELECT token FROM sessions WHERE token = ?", [sha256(token)]);
+
+  assert.equal(rows.length, 1);
+  assert.notEqual(rows[0].token, token);
+
+  const [raw] = await pool.query("SELECT COUNT(*) AS total FROM sessions WHERE token = ?", [token]);
+
+  assert.equal(raw[0].total, 0);
+
+  const loggedOut = await request("/api/auth/logout", { method: "POST", token });
+
+  assert.equal(loggedOut.status, 204);
+
+  const afterLogout = await request("/api/auth/me", { token });
+
+  assert.equal(afterLogout.status, 401);
 });

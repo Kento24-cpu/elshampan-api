@@ -1,19 +1,28 @@
 import cors from "cors";
 import express from "express";
+import { config } from "./config/env.js";
 import { setPool } from "./db/pool.js";
 import { errorHandler, notFound } from "./middleware/error.js";
-import { apiRouter } from "./routes/index.js";
+import { createApiRouter } from "./routes/index.js";
 
-export function createApp({ pool } = {}) {
+const resolveCorsOptions = () => {
+  const origins = config.corsOrigins.split(",").map((origin) => origin.trim()).filter(Boolean);
+
+  if (origins.includes("*")) return {};
+
+  return { origin: origins };
+};
+
+export function createApp({ pool, authRateLimit } = {}) {
   if (pool) setPool(pool);
 
   const app = express();
 
   app.disable("x-powered-by");
-  app.use(cors());
+  app.use(cors(resolveCorsOptions()));
   app.use(express.json({ limit: "1mb" }));
 
-  app.use("/api", apiRouter);
+  app.use("/api", createApiRouter({ authRateLimit }));
 
   app.use(notFound);
   app.use(errorHandler);
